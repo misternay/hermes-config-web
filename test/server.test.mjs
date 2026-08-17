@@ -28,7 +28,7 @@ const seedConfig = {
   providers: {
     'z-ai': {
       name: 'z-ai',
-      base_url: 'https://api.z.ai/api/coding/paas/v4',
+      base_url: 'https://api.example-llm.dev/v1',
       key_env: 'ZAI_KEY',
       default_model: 'glm-5.3',
     },
@@ -175,7 +175,7 @@ describe('POST /api/providers (create)', () => {
 describe('PUT /api/providers/:pid (update)', () => {
   test('updates fields and preserves untouched key', async () => {
     const { status } = await api('PUT', '/api/providers/z-ai', {
-      name: 'z-ai', base_url: 'https://api.z.ai/api/coding/paas/v4',
+      name: 'z-ai', base_url: 'https://api.example-llm.dev/v1',
       default_model: 'glm-5.4', key_mode: 'env', key_env: 'ZAI_KEY',
     });
     assert.equal(status, 200);
@@ -187,7 +187,7 @@ describe('PUT /api/providers/:pid (update)', () => {
 
   test('new key overwrites .env entry', async () => {
     await api('PUT', '/api/providers/z-ai', {
-      name: 'z-ai', base_url: 'https://api.z.ai/api/coding/paas/v4',
+      name: 'z-ai', base_url: 'https://api.example-llm.dev/v1',
       key_mode: 'env', key_env: 'ZAI_KEY', api_key: 'sk-zai-rotated-999',
     });
     assert.ok(fs.readFileSync(ENV, 'utf8').includes('ZAI_KEY=sk-zai-rotated-999'));

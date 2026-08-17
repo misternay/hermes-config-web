@@ -30,15 +30,15 @@ Hermes Agent is configured via `~/.hermes/config.yaml` + `~/.hermes/.env`. Addin
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ ● Active Route  custom:z-ai · glm-5.3        [z-ai ▾][glm‑5.3][สลับ] │
+│ ● Active Route  custom:z-ai · glm-5.3       [z-ai ▾][glm-5.3][Switch] │
 ├────────────────────────────────────────────────────────────┤
-│ ● z-ai          [V12]                                      │
-│   https://api.z.ai/... · glm-5.3 · sk-x…key                │
+│ ● z-ai                  [V12]                              │
+│   https://api.z.ai/api/paas/v4 · glm-5.3 · sk-x…key        │
 │   [⚡ Test] [✎ Edit] [🗑 Delete]                            │
 │                                                            │
-│ ● arise-glm5    [x-bf-vk] [ACTIVE]                          │
-│   https://inf-bifrost.../v1 · huawei/glm-5.2               │
-│   ✓ 200 OK · 7.1s · served: glm-5.2 · replied "OK"         │
+│ ● my-gateway    [x-bf-vk] [ACTIVE]                         │
+│   https://gw.example.com/v1 · my-model                     │
+│   ✓ 200 OK · 1.6s · served: my-model · replied "OK"        │
 └────────────────────────────────────────────────────────────┘
 ```
 
