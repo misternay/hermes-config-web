@@ -21,6 +21,13 @@ export default function ModelProviderSection() {
   const [results, setResults] = useState({});
   const [editing, setEditing] = useState(null); // null | 'new' | pid
   const [switching, setSwitching] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null); // provider being deleted
+  const [toast, setToast] = useState(null); // {msg, ok}
+
+  const notify = (msg, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const refresh = useCallback(async () => {
     const d = await api(`${API}/providers`);
@@ -53,23 +60,30 @@ export default function ModelProviderSection() {
 
   const removeProvider = async (pid) => {
     const p = providers.find((x) => x.id === pid);
-    if (!window.confirm(`ลบ provider "${p.name}" ?\n(config จะ backup อัตโนมัติก่อนลบ)`)) return;
+    if (!p) return;
+    setConfirmDelete(p);
+  };
+
+  const doDelete = async () => {
+    const p = confirmDelete;
+    setConfirmDelete(null);
     try {
-      const r = await api(`${API}/providers/${encodeURIComponent(pid)}?force=true`, { method: 'DELETE' });
-      window.alert(r.message || 'ลบแล้ว');
+      const r = await api(`/api/providers/${encodeURIComponent(p.id)}?force=true`, { method: 'DELETE' });
+      notify(r.message || 'ลบแล้ว');
       refresh();
-    } catch (e) { window.alert(e.message); }
+    } catch (e) { notify(e.message, false); }
   };
 
   const switchActive = async () => {
     const name = document.getElementById('sw-prov').value;
     const model = document.getElementById('sw-model').value.trim();
-    if (!model) return window.alert('ระบุ model ด้วย');
+    if (!model) return notify('ระบุ model ด้วย', false);
     setSwitching(true);
     try {
-      await api(`${API}/active`, { method: 'PUT', body: JSON.stringify({ name, model }) });
+      await api('/api/active', { method: 'PUT', body: JSON.stringify({ name, model }) });
+      notify(`สลับเป็น ${name} / ${model} แล้ว (session ใหม่ถึงมีผล)`);
       refresh();
-    } catch (e) { window.alert(e.message); }
+    } catch (e) { notify(e.message, false); }
     finally { setSwitching(false); }
   };
 
@@ -96,7 +110,7 @@ export default function ModelProviderSection() {
           <div className="flex items-center gap-2">
             <select
               id="sw-prov"
-              className="bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none min-w-[140px]"
+              className="bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 min-w-[140px]"
             >
               {providers.map((p) => (
                 <option key={p.id} value={p.name}>{p.name}</option>
@@ -106,7 +120,7 @@ export default function ModelProviderSection() {
               id="sw-model"
               defaultValue={active.model || ''}
               placeholder="model เช่น glm-5.3"
-              className="bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none w-44"
+              className="bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-44"
             />
             <button
               onClick={switchActive}
@@ -260,12 +274,90 @@ export default function ModelProviderSection() {
           onSaved={() => { setEditing(null); refresh(); }}
         />
       )}
+
+      {/* ── Delete confirm dialog ───────────────────────────── */}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`ลบ provider "${confirmDelete.name}" ?`}
+          body="config จะ backup อัตโนมัติก่อนลบ — การกระทำนี้ย้อนกลับได้ผ่าน backup"
+          confirmLabel="ลบ"
+          onConfirm={doDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {/* ── Toast ───────────────────────────────────────────── */}
+      {toast && (
+        <div
+          role="status"
+          className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] rounded-lg border px-4 py-2.5 text-sm shadow-xl shadow-black/40 ${toast.ok ? 'border-emerald-500/50 bg-emerald-950/90 text-emerald-200' : 'border-rose-500/50 bg-rose-950/90 text-rose-200'}`}
+        >
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
+// Accessible dialog primitives (ESC to close, focus trap, initial focus)
+function useDialogA11y(onClose) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const prevFocus = document.activeElement;
+    // initial focus: first focusable element (the close button / first input)
+    const focusables = node.querySelectorAll('input, select, textarea, button, [href]');
+    if (focusables.length) focusables[1] || focusables[0].focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
+      if (e.key === 'Tab') {
+        // focus trap
+        const items = Array.from(node.querySelectorAll('input, select, textarea, button, [href]')).filter((el) => !el.disabled);
+        if (!items.length) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    node.addEventListener('keydown', onKey);
+    return () => {
+      node.removeEventListener('keydown', onKey);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+    };
+  }, [onClose]);
+  return ref;
+}
+
+function ConfirmDialog({ title, body, confirmLabel = 'Confirm', onConfirm, onCancel }) {
+  const ref = useDialogA11y(onCancel);
+  return (
+    <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div ref={ref} role="alertdialog" aria-modal="true" aria-label={title} className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+        <div className="px-6 pt-5 pb-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400 shrink-0">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+              <p className="mt-1 text-xs text-slate-400 leading-relaxed">{body}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2.5 border-t border-slate-800 px-6 py-4">
+          <button autoFocus onClick={onCancel} className="border border-slate-700 hover:border-slate-500 text-slate-300 px-4 py-2 rounded-lg text-sm cursor-pointer transition-smooth focus:outline-none focus:ring-2 focus:ring-slate-500">ยกเลิก</button>
+          <button onClick={onConfirm} className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-smooth focus:outline-none focus:ring-2 focus:ring-rose-400">{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProviderModal({ pid, provider, onClose, onSaved }) {
+  const dlgRef = useDialogA11y(onClose);
   const isNew = !pid;
   const [form, setForm] = useState(() => ({
     name: provider?.name || '',
@@ -307,7 +399,7 @@ function ProviderModal({ pid, provider, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <form onSubmit={save} className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+      <form ref={dlgRef} onSubmit={save} role="dialog" aria-modal="true" aria-label={isNew ? 'เพิ่ม Provider' : `แก้ไข ${provider?.name}`} className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
           <h3 className="text-base font-semibold text-slate-100">
             {isNew ? 'เพิ่ม Provider' : `แก้ไข ${provider?.name}`}

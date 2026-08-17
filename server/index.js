@@ -9,7 +9,20 @@ import * as yaml from 'js-yaml';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-app.use(cors());
+
+// Local-only hardening: this tool manages API keys, so lock the attack
+// surface down to the same origin that serves the UI.
+// - CORS: deny cross-origin API calls (a page you happen to have open must
+//   not be able to write to your Hermes config via simple requests).
+// - Host allowlist: blocks DNS-rebinding sites reaching 127.0.0.1 directly.
+app.use(cors({ origin: false }));
+app.use((req, res, next) => {
+  const host = (req.headers.host || '').split(':')[0];
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) {
+    return res.status(403).json({ error: 'local access only' });
+  }
+  next();
+});
 app.use(express.json({ limit: '10mb' }));
 
 // HERMES_HOME override: lets tests run against a throwaway home, and lets
@@ -157,8 +170,16 @@ app.get('/api/backups', (req, res) => {
 // 5. POST /api/config/restore
 app.post('/api/config/restore', (req, res) => {
   const { filename } = req.body;
-  if (!filename) {
+  if (!filename || typeof filename !== 'string') {
     return res.status(400).json({ error: 'filename is required' });
+  }
+  // Path-traversal guard: only plain backup filenames inside HERMES_DIR are
+  // restorable — no separators, no '..', no absolute paths.
+  if (/[\\/]|\.\./.test(filename)) {
+    return res.status(400).json({ error: 'invalid filename' });
+  }
+  if (!filename.startsWith('config.yaml.bak')) {
+    return res.status(400).json({ error: 'not a config backup file' });
   }
 
   const backupFilePath = path.join(HERMES_DIR, filename);

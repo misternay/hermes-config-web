@@ -274,3 +274,37 @@ describe('backup safety', () => {
     assert.ok(files.length >= 3, `expected >=3 backups, got ${files.length}`);
   });
 });
+
+describe('security: path traversal in config restore', () => {
+  test('rejects filenames with separators', async () => {
+    const { status } = await api('POST', '/api/config/restore', { filename: '../.ssh/id_ed25519' });
+    assert.equal(status, 400);
+  });
+
+  test('rejects non-backup filenames', async () => {
+    const { status } = await api('POST', '/api/config/restore', { filename: '.env' });
+    assert.equal(status, 400);
+  });
+});
+
+describe('security: DNS-rebinding host allowlist', () => {
+  test('rejects requests with foreign Host header', async () => {
+    // fetch() cannot set Host (forbidden header) — speak raw HTTP instead
+    const net = await import('node:net');
+    const resp = await new Promise((resolve, reject) => {
+      const sock = net.connect(PORT, '127.0.0.1');
+      sock.on('connect', () => sock.write('GET /api/providers HTTP/1.1\r\nHost: evil.example.com\r\nConnection: close\r\n\r\n'));
+      let data = '';
+      sock.on('data', (d) => (data += d));
+      sock.on('end', () => resolve(data));
+      sock.on('error', reject);
+      setTimeout(() => { sock.destroy(); reject(new Error('timeout')); }, 5000);
+    });
+    assert.match(resp, /^HTTP\/1\.1 403/, `expected 403, got: ${resp.split('\r\n')[0]}`);
+  });
+
+  test('allows localhost Host', async () => {
+    const r = await fetch(`${BASE}/api/providers`, { headers: { Host: 'localhost:8765' } });
+    assert.equal(r.status, 200);
+  });
+});
