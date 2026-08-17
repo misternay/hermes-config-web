@@ -10,9 +10,17 @@
     "start": "npm run build && node server/index.js",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test test/server.test.mjs"
+    "test": "node --test test/server.test.mjs",
+    "screenshots": "node scripts/capture-screenshots.mjs"
   },
-  "keywords": ["hermes-agent", "hermes", "config", "llm", "provider-manager", "openai-compatible"],
+  "keywords": [
+    "hermes-agent",
+    "hermes",
+    "config",
+    "llm",
+    "provider-manager",
+    "openai-compatible"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=20"
@@ -28,8 +36,8 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.5",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4.3.3",
     "vite": "^8.2.0"
   }
 }
-

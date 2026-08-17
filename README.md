@@ -24,23 +24,26 @@ Hermes Agent is configured via `~/.hermes/config.yaml` + `~/.hermes/.env`. Addin
 - **Full config editor** — every other config section (agent, toolsets, personalities, terminal, …) plus a raw YAML editor with validation
 - **Automatic backups** — every mutation snapshots `config.yaml` first; restore from the UI
 
-## Screenshot
+## Screenshots
 
-> _tip: add one after first run — `open http://127.0.0.1:8765`_
+**Provider manager** — connection testing, key handling, active-route switching:
 
-```
-┌────────────────────────────────────────────────────────────┐
-│ ● Active Route  custom:z-ai · glm-5.3       [z-ai ▾][glm-5.3][Switch] │
-├────────────────────────────────────────────────────────────┤
-│ ● z-ai                  [V12]                              │
-│   https://api.z.ai/api/paas/v4 · glm-5.3 · sk-x…key        │
-│   [⚡ Test] [✎ Edit] [🗑 Delete]                            │
-│                                                            │
-│ ● my-gateway    [x-bf-vk] [ACTIVE]                         │
-│   https://gw.example.com/v1 · my-model                     │
-│   ✓ 200 OK · 1.6s · served: my-model · replied "OK"        │
-└────────────────────────────────────────────────────────────┘
-```
+![Providers](docs/screenshots/providers.png)
+
+**Edit a provider** — env / inline key modes, custom auth headers (e.g. `x-bf-vk`):
+
+![Provider edit](docs/screenshots/provider-edit.png)
+
+**Raw YAML editor** — with validation and one-click backup/restore:
+
+![Raw YAML](docs/screenshots/raw-yaml.png)
+
+<details>
+<summary><b>Overview dashboard</b></summary>
+
+![Overview](docs/screenshots/overview.png)
+
+</details>
 
 ## Quick start
 
